@@ -12,25 +12,6 @@ app = FastAPI()
 
 STRING_DICT = {}
 
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    error_check = exc.errors()[0].get("type")
-    print((exc.errors()[0].get("type")))
-    if error_check == "string_type":
-         return JSONResponse(
-             status_code=422,
-             content={"detail":"Invalid data type for 'value' (must be string)"}
-         )
-    elif error_check == "missing":
-        return JSONResponse(
-            status_code=400,
-            content={"detail": "Invalid request body or missing 'value' field"}
-            )
-    return JSONResponse(
-            status_code=422,
-            content={"detail": exc.errors()}
-            )
-
 
 def generate_sha256_hash_string(input_string: str):
     hashed_string = hashlib.sha256(input_string.encode('utf-8')).hexdigest()
@@ -38,11 +19,34 @@ def generate_sha256_hash_string(input_string: str):
 
 
 @app.post("/strings", status_code=201)
-def analyze_string(data: StringInput):
+async def analyze_string(request: Request):
     """
     Analyzes a given string and returns it with specific properties
     """
-    value = data.value
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Invalid JSON format in request body"}
+        )
+
+    # Manual check for field presence and type
+    if "value" not in data:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Invalid request body or missing 'value' field"}
+        )
+
+    if not isinstance(data["value"], str):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "Invalid data type for 'value' (must be string)"}
+        )
+
+
+    validated = StringInput(**data)
+    value = validated.value
     sha256_hash = generate_sha256_hash_string(value)
     if sha256_hash in STRING_DICT:
         raise HTTPException(status_code=409, detail="String already exists in the system")
