@@ -6,8 +6,7 @@ from datetime import datetime, timezone
 from schema import StringInput
 import hashlib
 
-
-app = FastAPI()
+app = FastAPI(title="Profile + Cat Fact API", root_path="/app3")
 
 
 STRING_DICT = {}
